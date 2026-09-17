@@ -5,13 +5,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>1인 캐릭터 외관 정리틀 생성기</title>
   
-  <!-- 구글 폰트 로드 -->
+  <!-- 구글 폰트 -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Gowun+Batang:wght@400;700&family=Noto+Sans+KR:wght@300;400;700&family=Song+Myung&display=swap" rel="stylesheet">
   
   <!-- html2canvas (이미지 다운로드 라이브러리) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+  <!-- Cropper.js (이미지 편집/자르기 라이브러리) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
 
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -104,7 +108,7 @@
       background-color: #5b4bc4;
     }
 
-    /* 프리뷰 메인 박스 (이미지 변환 대상) */
+    /* 프리뷰 영역 */
     .preview-section {
       flex: 1 1 650px;
       display: flex;
@@ -168,7 +172,7 @@
       gap: 20px;
     }
     
-    /* 전신 이미지 박스 */
+    /* 전신 이미지 영역 */
     .fullbody-box {
       width: 100%;
       height: 420px;
@@ -191,7 +195,7 @@
       font-size: 0.85rem;
     }
 
-    /* 오른쪽 스펙 & 상세 서술 */
+    /* 상세 설명 박스 */
     .details-box {
       display: flex;
       flex-direction: column;
@@ -237,7 +241,7 @@
       line-height: 1.4;
     }
 
-    /* 세부 이미지 갤러리 (4칸) */
+    /* 하단 세부 이미지 4칸 */
     .gallery-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
@@ -269,6 +273,89 @@
       color: #fff;
       padding: 1px 4px;
       border-radius: 3px;
+    }
+
+    /* 이미지 편집 모달 스타일 */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.75);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+    }
+    .modal-content {
+      background: #fff;
+      padding: 20px;
+      border-radius: 12px;
+      max-width: 600px;
+      width: 90%;
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+    }
+    .modal-content h3 {
+      font-size: 1.1rem;
+      color: #333;
+    }
+    .img-container {
+      max-height: 400px;
+      width: 100%;
+      overflow: hidden;
+      background: #222;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      border-radius: 6px;
+    }
+    .img-container img {
+      max-width: 100%;
+      display: block;
+    }
+    .modal-tools {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+    }
+    .modal-tools button {
+      padding: 6px 12px;
+      background: #f0f0f0;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+    .modal-tools button:hover {
+      background: #e0e0e0;
+    }
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+    .modal-actions button {
+      padding: 8px 16px;
+      border-radius: 6px;
+      border: none;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .btn-cancel {
+      background: #eee;
+      color: #555;
+    }
+    .btn-apply {
+      background: #6c5ce7;
+      color: #fff;
+    }
+    .btn-apply:hover {
+      background: #5b4bc4;
     }
   </style>
 </head>
@@ -465,6 +552,25 @@
     </div>
   </div>
 
+  <!-- 이미지 편집/자르기 팝업 모달 -->
+  <div id="crop-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-content">
+      <h3>🖼️ 이미지 자르기 및 영역 편집</h3>
+      <div class="img-container">
+        <img id="crop-target-image" src="" alt="편집할 이미지">
+      </div>
+      <div class="modal-tools">
+        <button type="button" onclick="rotateImage(-90)">↺ 왼쪽 90°</button>
+        <button type="button" onclick="rotateImage(90)">↻ 오른쪽 90°</button>
+        <button type="button" onclick="resetCrop()">🔄 초기화</button>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-cancel" onclick="closeCropModal()">취소</button>
+        <button type="button" class="btn-apply" onclick="applyCrop()">적용하기</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     // 텍스트 실시간 업데이트
     function updateText(id) {
@@ -503,32 +609,92 @@
       document.getElementById('prev-eye').innerText = eyeText;
     }
 
-    // 파일 업로드 이벤트 연결
-    function bindImageUpload(inputId, targetImgId, placeholderId) {
-      document.getElementById(inputId).addEventListener('change', function(e) {
+    /* --- 이미지 자르기 / 편집 기능 (Cropper.js) --- */
+    let cropper = null;
+    let currentTargetImgId = null;
+    let currentPlaceholderId = null;
+
+    function openCropModal(file, targetImgId, placeholderId, aspectRatio) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const modal = document.getElementById('crop-modal');
+        const imageEl = document.getElementById('crop-target-image');
+        imageEl.src = e.target.result;
+        modal.style.display = 'flex';
+        
+        if (cropper) {
+          cropper.destroy();
+        }
+        
+        // Cropper 인스턴스 생성
+        cropper = new Cropper(imageEl, {
+          aspectRatio: aspectRatio, // 1이면 1:1 정방형, NaN이면 자유 자르기
+          viewMode: 1,
+          autoCropArea: 0.9,
+          responsive: true
+        });
+        
+        currentTargetImgId = targetImgId;
+        currentPlaceholderId = placeholderId;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function rotateImage(deg) {
+      if (cropper) cropper.rotate(deg);
+    }
+
+    function resetCrop() {
+      if (cropper) cropper.reset();
+    }
+
+    function closeCropModal() {
+      const modal = document.getElementById('crop-modal');
+      modal.style.display = 'none';
+      if (cropper) {
+        cropper.destroy();
+        cropper = null;
+      }
+    }
+
+    function applyCrop() {
+      if (!cropper) return;
+      const canvas = cropper.getCroppedCanvas({
+        maxWidth: 1200,
+        maxHeight: 1200
+      });
+      if (canvas) {
+        const dataUrl = canvas.toDataURL('image/png');
+        const img = document.getElementById(currentTargetImgId);
+        img.src = dataUrl;
+        img.style.display = 'block';
+        if (currentPlaceholderId) {
+          const ph = document.getElementById(currentPlaceholderId);
+          if (ph) ph.style.display = 'none';
+        }
+      }
+      closeCropModal();
+    }
+
+    // 파일 입력과 자르기 모달 연결
+    function bindImageUploadWithCrop(inputId, targetImgId, placeholderId, aspectRatio) {
+      const inputEl = document.getElementById(inputId);
+      inputEl.addEventListener('change', function(e) {
         const file = e.target.files[0];
         if (file) {
-          const reader = new FileReader();
-          reader.onload = function(evt) {
-            const img = document.getElementById(targetImgId);
-            img.src = evt.target.result;
-            img.style.display = 'block';
-            if (placeholderId) {
-              const ph = document.getElementById(placeholderId);
-              if (ph) ph.style.display = 'none';
-            }
-          };
-          reader.readAsDataURL(file);
+          openCropModal(file, targetImgId, placeholderId, aspectRatio);
         }
+        this.value = ''; // 동일 파일 재업로드 지원
       });
     }
 
-    bindImageUpload('file-avatar', 'prev-avatar', null);
-    bindImageUpload('file-fullbody', 'prev-fullbody', 'fullbody-placeholder');
-    bindImageUpload('file-detail1', 'prev-detail1', 'placeholder-detail1');
-    bindImageUpload('file-detail2', 'prev-detail2', 'placeholder-detail2');
-    bindImageUpload('file-detail3', 'prev-detail3', 'placeholder-detail3');
-    bindImageUpload('file-detail4', 'prev-detail4', 'placeholder-detail4');
+    // 각각의 이미지 영역별 비율 설정 (인장/세부자료: 1:1, 전신: 자유 비율)
+    bindImageUploadWithCrop('file-avatar', 'prev-avatar', null, 1);
+    bindImageUploadWithCrop('file-fullbody', 'prev-fullbody', 'fullbody-placeholder', NaN);
+    bindImageUploadWithCrop('file-detail1', 'prev-detail1', 'placeholder-detail1', 1);
+    bindImageUploadWithCrop('file-detail2', 'prev-detail2', 'placeholder-detail2', 1);
+    bindImageUploadWithCrop('file-detail3', 'prev-detail3', 'placeholder-detail3', 1);
+    bindImageUploadWithCrop('file-detail4', 'prev-detail4', 'placeholder-detail4', 1);
 
     // PNG 저장 기능
     function downloadImage() {
@@ -539,7 +705,7 @@
       btn.disabled = true;
 
       html2canvas(card, {
-        scale: 2, // 고화질 저장
+        scale: 2,
         useCORS: true,
         backgroundColor: null
       }).then(canvas => {
