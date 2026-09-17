@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>1인 캐릭터 외관 정리틀 생성기</title>
+  
+  <!-- 구글 폰트 -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Gowun+Batang:wght@400;700&family=Noto+Sans+KR:wght@300;400;700&family=Song+Myung&display=swap" rel="stylesheet">
+  
+  <!-- html2canvas (이미지 다운로드 라이브러리) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+  <!-- Cropper.js (이미지 편집/자르기 라이브러리) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Noto Sans KR', sans-serif;
+      background-color: #f0f2f5;
+      color: #333;
+      padding: 20px;
+    }
+    .container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 30px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    
+    /* 편집 폼 스타일 */
+    .editor-section {
+      flex: 1 1 420px;
+      background: #fff;
+      padding: 24px;
+      border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+    .editor-section h2 {
+      font-size: 1.4rem;
+      margin-bottom: 15px;
+      color: #4a4a4a;
+      border-bottom: 2px solid #eeeeee;
+      padding-bottom: 8px;
+    }
+    .form-group {
+      margin-bottom: 14px;
+    }
+    .form-group label {
+      display: block;
+      font-weight: bold;
+      font-size: 0.88rem;
+      margin-bottom: 5px;
+      color: #555;
+    }
+    .form-group input[type="text"],
+    .form-group textarea,
+    .form-group select {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 0.9rem;
+    }
+    .form-group textarea {
+      resize: vertical;
+      height: 70px;
+    }
+    .color-picker-group {
+      display: flex;
+      gap: 15px;
+      flex-wrap: wrap;
+    }
+    .color-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.85rem;
+    }
+    .color-item input[type="color"] {
+      border: none;
+      width: 32px;
+      height: 32px;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+    .btn-save {
+      width: 100%;
+      padding: 12px;
+      background-color: #6c5ce7;
+      color: white;
+      font-size: 1rem;
+      font-weight: bold;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-top: 15px;
+      transition: background 0.2s;
+    }
+    .btn-save:hover {
+      background-color: #5b4bc4;
+    }
+
+    /* 프리뷰 영역 */
+    .preview-section {
+      flex: 1 1 650px;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+    }
+    #card-preview {
+      width: 720px;
+      background-color: #ffffff;
+      padding: 30px;
+      border-radius: 16px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+      box-sizing: border-box;
+      color: #2b2b2b;
+      font-family: 'Noto Sans KR', sans-serif;
+    }
+
+    /* 카드 내부 헤더 */
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      border-bottom: 2px solid var(--accent-color, #6c5ce7);
+      padding-bottom: 20px;
+      margin-bottom: 20px;
+    }
+    .profile-avatar {
+      width: 90px;
+      height: 90px;
+      border-radius: 50%;
+      object-fit: cover;
+      background-color: #e9ecef;
+      border: 3px solid var(--accent-color, #6c5ce7);
+      flex-shrink: 0;
+    }
+    .header-text {
+      flex-grow: 1;
+    }
+    .name-kr {
+      font-size: 1.8rem;
+      font-weight: bold;
+      line-height: 1.2;
+    }
+    .name-sub {
+      font-size: 1rem;
+      opacity: 0.7;
+      margin-top: 2px;
+    }
+    .catchphrase {
+      font-size: 0.95rem;
+      margin-top: 6px;
+      font-style: italic;
+      color: var(--accent-color, #6c5ce7);
+      font-weight: 500;
+    }
+
+    /* 카드 바디 */
+    .card-body {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: 20px;
+    }
+    
+    /* 전신 이미지 영역 */
+    .fullbody-box {
+      width: 100%;
+      height: 420px;
+      background-color: rgba(0,0,0,0.03);
+      border-radius: 10px;
+      border: 2px dashed #ddd;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+      position: relative;
+    }
+    .fullbody-box img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+    .img-placeholder {
+      color: #aaa;
+      font-size: 0.85rem;
+    }
+
+    /* 상세 설명 박스 */
+    .details-box {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .badge-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .badge-item {
+      background-color: rgba(0,0,0,0.04);
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .color-chip {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      display: inline-block;
+      border: 1px solid rgba(0,0,0,0.2);
+    }
+    
+    .text-block {
+      background-color: rgba(0,0,0,0.02);
+      border-left: 3px solid var(--accent-color, #6c5ce7);
+      padding: 8px 12px;
+      border-radius: 0 6px 6px 0;
+    }
+    .text-block-title {
+      font-size: 0.8rem;
+      font-weight: bold;
+      opacity: 0.7;
+      margin-bottom: 4px;
+    }
+    .text-block-content {
+      font-size: 0.88rem;
+      white-space: pre-wrap;
+      line-height: 1.4;
+    }
+
+    /* 하단 세부 이미지 4칸 */
+    .gallery-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-top: 20px;
+    }
+    .gallery-item {
+      height: 110px;
+      background-color: rgba(0,0,0,0.03);
+      border-radius: 8px;
+      border: 1px dashed #ccc;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+    }
+    .gallery-item img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .gallery-label {
+      position: absolute;
+      bottom: 2px;
+      right: 4px;
+      font-size: 0.65rem;
+      background: rgba(0,0,0,0.5);
+      color: #fff;
+      padding: 1px 4px;
+      border-radius: 3px;
+    }
+
+    /* 이미지 편집 모달 스타일 */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.75);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+    }
+    .modal-content {
+      background: #fff;
+      padding: 20px;
+      border-radius: 12px;
+      max-width: 600px;
+      width: 90%;
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+    }
+    .modal-content h3 {
+      font-size: 1.1rem;
+      color: #333;
+    }
+    .img-container {
+      max-height: 400px;
+      width: 100%;
+      overflow: hidden;
+      background: #222;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      border-radius: 6px;
+    }
+    .img-container img {
+      max-width: 100%;
+      display: block;
+    }
+    .modal-tools {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+    }
+    .modal-tools button {
+      padding: 6px 12px;
+      background: #f0f0f0;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+    .modal-tools button:hover {
+      background: #e0e0e0;
+    }
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+    .modal-actions button {
+      padding: 8px 16px;
+      border-radius: 6px;
+      border: none;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .btn-cancel {
+      background: #eee;
+      color: #555;
+    }
+    .btn-apply {
+      background: #6c5ce7;
+      color: #fff;
+    }
+    .btn-apply:hover {
+      background: #5b4bc4;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <!-- 왼쪽: 입력을 위한 설정 폼 -->
+    <div class="editor-section">
+      <h2>캐릭터 정보 입력</h2>
+      
+      <!-- 폰트 및 테마 색상 -->
+      <div class="form-group">
+        <label>폰트 선택</label>
+        <select id="input-font" onchange="updateFont()">
+          <option value="'Noto Sans KR', sans-serif">기본 (Noto Sans)</option>
+          <option value="'Black Han Sans', sans-serif">Black Han Sans [고딕/강렬]</option>
+          <option value="'Gowun Batang', serif">Gowun Batang [감성/바탕]</option>
+          <option value="'Song Myung', serif">Song Myung [명조/고전]</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>테마 색상 설정</label>
+        <div class="color-picker-group">
+          <div class="color-item">
+            <span>카드 배경</span>
+            <input type="color" id="color-bg" value="#ffffff" onchange="updateColors()">
+          </div>
+          <div class="color-item">
+            <span>글자색</span>
+            <input type="color" id="color-text" value="#2b2b2b" onchange="updateColors()">
+          </div>
+          <div class="color-item">
+            <span>포인트색</span>
+            <input type="color" id="color-accent" value="#6c5ce7" onchange="updateColors()">
+          </div>
+        </div>
+      </div>
+
+      <hr style="margin: 15px 0; border: none; border-top: 1px solid #eee;">
+
+      <!-- 기본 정보 -->
+      <div class="form-group">
+        <label>인장 (프로필 이미지)</label>
+        <input type="file" id="file-avatar" accept="image/*">
+      </div>
+      <div class="form-group">
+        <label>이름 (한글)</label>
+        <input type="text" id="input-name-kr" value="캐릭터 이름" oninput="updateText('name-kr')">
+      </div>
+      <div class="form-group">
+        <label>이름 (영문/기타) 또는 칭호</label>
+        <input type="text" id="input-name-sub" value="Character Name / Sub Title" oninput="updateText('name-sub')">
+      </div>
+      <div class="form-group">
+        <label>캐치프라이즈 / 한줄 요약</label>
+        <input type="text" id="input-catchphrase" value="&quot;캐릭터를 대표하는 대사나 문장을 적어주세요.&quot;" oninput="updateText('catchphrase')">
+      </div>
+
+      <!-- 외관 스펙 -->
+      <div class="form-group">
+        <label>전신 이미지</label>
+        <input type="file" id="file-fullbody" accept="image/*">
+      </div>
+      <div class="form-group">
+        <label>키 (cm)</label>
+        <input type="text" id="input-height" value="175cm" oninput="updateText('height')">
+      </div>
+      <div class="form-group">
+        <label>모에화 / 상징 키워드</label>
+        <input type="text" id="input-symbol" value="🦊 흑여우" oninput="updateText('symbol')">
+      </div>
+      <div class="form-group">
+        <label>머리색 (색상 및 설명)</label>
+        <div style="display: flex; gap: 8px;">
+          <input type="color" id="color-hair" value="#333333" onchange="updateHairEyeColor()">
+          <input type="text" id="input-hair-text" value="#333333 흑발" oninput="updateHairEyeColor()">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>눈색 (색상 및 설명)</label>
+        <div style="display: flex; gap: 8px;">
+          <input type="color" id="color-eye" value="#6c5ce7" onchange="updateHairEyeColor()">
+          <input type="text" id="input-eye-text" value="#6c5ce7 자안" oninput="updateHairEyeColor()">
+        </div>
+      </div>
+
+      <!-- 상세 서술 -->
+      <div class="form-group">
+        <label>평소 의상</label>
+        <textarea id="input-outfit" oninput="updateText('outfit')">검은색 오버핏 후드티와 세미 와이드 슬랙스. 목에는 고양이 펜던트 목걸이를 상시 착용함.</textarea>
+      </div>
+      <div class="form-group">
+        <label>외관 특징 (주요 포인트)</label>
+        <textarea id="input-features" oninput="updateText('features')">- 왼쪽 눈 밑에 옅은 눈물점 존재&#10;- 약간 곱슬거리는 울프컷 헤어&#10;- 손등에 작은 흉터가 있음</textarea>
+      </div>
+      <div class="form-group">
+        <label>납작 캐해 / 성격 요약</label>
+        <textarea id="input-summary" oninput="updateText('summary')">무심해 보이지만 챙겨줄 건 다 챙겨주는 겉바속촉 타입. 당황하면 말수가 적어짐.</textarea>
+      </div>
+
+      <!-- 추가 세부 자료 -->
+      <div class="form-group">
+        <label>하단 세부 이미지 4종 (SD, 타투, 장신구 등)</label>
+        <input type="file" id="file-detail1" accept="image/*" style="margin-bottom: 4px;">
+        <input type="file" id="file-detail2" accept="image/*" style="margin-bottom: 4px;">
+        <input type="file" id="file-detail3" accept="image/*" style="margin-bottom: 4px;">
+        <input type="file" id="file-detail4" accept="image/*">
+      </div>
+
+      <button class="btn-save" id="btn-save" onclick="downloadImage()">🖼️ 이미지로 저장하기</button>
+    </div>
+
+    <!-- 오른쪽: 실시간 생성 카드 프리뷰 -->
+    <div class="preview-section">
+      <div id="card-preview">
+        <!-- 헤더 -->
+        <div class="card-header">
+          <img id="prev-avatar" class="profile-avatar" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'><circle cx='50' cy='50' r='50' fill='%23cccccc'/></svg>" alt="인장">
+          <div class="header-text">
+            <div class="name-kr" id="prev-name-kr">캐릭터 이름</div>
+            <div class="name-sub" id="prev-name-sub">Character Name / Sub Title</div>
+            <div class="catchphrase" id="prev-catchphrase">"캐릭터를 대표하는 대사나 문장을 적어주세요."</div>
+          </div>
+        </div>
+
+        <!-- 바디 -->
+        <div class="card-body">
+          <!-- 전신 이미지 -->
+          <div class="fullbody-box">
+            <span class="img-placeholder" id="fullbody-placeholder">전신 이미지 영역</span>
+            <img id="prev-fullbody" style="display: none;" alt="전신">
+          </div>
+
+          <!-- 스펙 & 설명 -->
+          <div class="details-box">
+            <div class="badge-grid">
+              <div class="badge-item">📏 키: <span id="prev-height">175cm</span></div>
+              <div class="badge-item">✨ 상징: <span id="prev-symbol">🦊 흑여우</span></div>
+              <div class="badge-item">
+                <span class="color-chip" id="chip-hair" style="background-color: #333333;"></span>
+                <span id="prev-hair">#333333 흑발</span>
+              </div>
+              <div class="badge-item">
+                <span class="color-chip" id="chip-eye" style="background-color: #6c5ce7;"></span>
+                <span id="prev-eye">#6c5ce7 자안</span>
+              </div>
+            </div>
+
+            <div class="text-block">
+              <div class="text-block-title">👔 평소 의상</div>
+              <div class="text-block-content" id="prev-outfit">검은색 오버핏 후드티와 세미 와이드 슬랙스. 목에는 고양이 펜던트 목걸이를 상시 착용함.</div>
+            </div>
+
+            <div class="text-block">
+              <div class="text-block-title">🔍 외관 특징</div>
+              <div class="text-block-content" id="prev-features">- 왼쪽 눈 밑에 옅은 눈물점 존재
+- 약간 곱슬거리는 울프컷 헤어
+- 손등에 작은 흉터가 있음</div>
+            </div>
+
+            <div class="text-block">
+              <div class="text-block-title">💡 납작 캐해</div>
+              <div class="text-block-content" id="prev-summary">무심해 보이지만 챙겨줄 건 다 챙겨주는 겉바속촉 타입. 당황하면 말수가 적어짐.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 하단 세부 이미지 4칸 -->
+        <div class="gallery-grid">
+          <div class="gallery-item">
+            <span class="img-placeholder" id="placeholder-detail1">SD / 토큰</span>
+            <img id="prev-detail1" style="display:none;">
+            <span class="gallery-label">SD/토큰</span>
+          </div>
+          <div class="gallery-item">
+            <span class="img-placeholder" id="placeholder-detail2">자료 1</span>
+            <img id="prev-detail2" style="display:none;">
+            <span class="gallery-label">디테일 1</span>
+          </div>
+          <div class="gallery-item">
+            <span class="img-placeholder" id="placeholder-detail3">자료 2</span>
+            <img id="prev-detail3" style="display:none;">
+            <span class="gallery-label">디테일 2</span>
+          </div>
+          <div class="gallery-item">
+            <span class="img-placeholder" id="placeholder-detail4">자료 3</span>
+            <img id="prev-detail4" style="display:none;">
+            <span class="gallery-label">디테일 3</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- 이미지 편집/자르기 팝업 모달 -->
+  <div id="crop-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-content">
+      <h3>🖼️ 이미지 자르기 및 영역 편집</h3>
+      <div class="img-container">
+        <img id="crop-target-image" src="" alt="편집할 이미지">
+      </div>
+      <div class="modal-tools">
+        <button type="button" onclick="rotateImage(-90)">↺ 왼쪽 90°</button>
+        <button type="button" onclick="rotateImage(90)">↻ 오른쪽 90°</button>
+        <button type="button" onclick="resetCrop()">🔄 초기화</button>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-cancel" onclick="closeCropModal()">취소</button>
+        <button type="button" class="btn-apply" onclick="applyCrop()">적용하기</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 텍스트 실시간 업데이트
+    function updateText(id) {
+      const inputVal = document.getElementById('input-' + id).value;
+      document.getElementById('prev-' + id).innerText = inputVal;
+    }
+
+    // 폰트 변경
+    function updateFont() {
+      const font = document.getElementById('input-font').value;
+      document.getElementById('card-preview').style.fontFamily = font;
+    }
+
+    // 색상 변경
+    function updateColors() {
+      const bg = document.getElementById('color-bg').value;
+      const text = document.getElementById('color-text').value;
+      const accent = document.getElementById('color-accent').value;
+
+      const card = document.getElementById('card-preview');
+      card.style.backgroundColor = bg;
+      card.style.color = text;
+      card.style.setProperty('--accent-color', accent);
+    }
+
+    // 머리색/눈색 업데이트
+    function updateHairEyeColor() {
+      const hairColor = document.getElementById('color-hair').value;
+      const hairText = document.getElementById('input-hair-text').value;
+      document.getElementById('chip-hair').style.backgroundColor = hairColor;
+      document.getElementById('prev-hair').innerText = hairText;
+
+      const eyeColor = document.getElementById('color-eye').value;
+      const eyeText = document.getElementById('input-eye-text').value;
+      document.getElementById('chip-eye').style.backgroundColor = eyeColor;
+      document.getElementById('prev-eye').innerText = eyeText;
+    }
+
+    /* --- 이미지 자르기 / 편집 기능 (Cropper.js) --- */
+    let cropper = null;
+    let currentTargetImgId = null;
+    let currentPlaceholderId = null;
+
+    function openCropModal(file, targetImgId, placeholderId, aspectRatio) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const modal = document.getElementById('crop-modal');
+        const imageEl = document.getElementById('crop-target-image');
+        imageEl.src = e.target.result;
+        modal.style.display = 'flex';
+        
+        if (cropper) {
+          cropper.destroy();
+        }
+        
+        // Cropper 인스턴스 생성
+        cropper = new Cropper(imageEl, {
+          aspectRatio: aspectRatio, // 1이면 1:1 정방형, NaN이면 자유 자르기
+          viewMode: 1,
+          autoCropArea: 0.9,
+          responsive: true
+        });
+        
+        currentTargetImgId = targetImgId;
+        currentPlaceholderId = placeholderId;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function rotateImage(deg) {
+      if (cropper) cropper.rotate(deg);
+    }
+
+    function resetCrop() {
+      if (cropper) cropper.reset();
+    }
+
+    function closeCropModal() {
+      const modal = document.getElementById('crop-modal');
+      modal.style.display = 'none';
+      if (cropper) {
+        cropper.destroy();
+        cropper = null;
+      }
+    }
+
+    function applyCrop() {
+      if (!cropper) return;
+      const canvas = cropper.getCroppedCanvas({
+        maxWidth: 1200,
+        maxHeight: 1200
+      });
+      if (canvas) {
+        const dataUrl = canvas.toDataURL('image/png');
+        const img = document.getElementById(currentTargetImgId);
+        img.src = dataUrl;
+        img.style.display = 'block';
+        if (currentPlaceholderId) {
+          const ph = document.getElementById(currentPlaceholderId);
+          if (ph) ph.style.display = 'none';
+        }
+      }
+      closeCropModal();
+    }
+
+    // 파일 입력과 자르기 모달 연결
+    function bindImageUploadWithCrop(inputId, targetImgId, placeholderId, aspectRatio) {
+      const inputEl = document.getElementById(inputId);
+      inputEl.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+          openCropModal(file, targetImgId, placeholderId, aspectRatio);
+        }
+        this.value = ''; // 동일 파일 재업로드 지원
+      });
+    }
+
+    // 각각의 이미지 영역별 비율 설정 (인장/세부자료: 1:1, 전신: 자유 비율)
+    bindImageUploadWithCrop('file-avatar', 'prev-avatar', null, 1);
+    bindImageUploadWithCrop('file-fullbody', 'prev-fullbody', 'fullbody-placeholder', NaN);
+    bindImageUploadWithCrop('file-detail1', 'prev-detail1', 'placeholder-detail1', 1);
+    bindImageUploadWithCrop('file-detail2', 'prev-detail2', 'placeholder-detail2', 1);
+    bindImageUploadWithCrop('file-detail3', 'prev-detail3', 'placeholder-detail3', 1);
+    bindImageUploadWithCrop('file-detail4', 'prev-detail4', 'placeholder-detail4', 1);
+
+    // PNG 저장 기능
+    function downloadImage() {
+      const card = document.getElementById('card-preview');
+      const btn = document.getElementById('btn-save');
+      
+      btn.innerText = '⏳ 이미지 생성 중...';
+      btn.disabled = true;
+
+      html2canvas(card, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: null
+      }).then(canvas => {
+        const link = document.createElement('a');
+        const charName = document.getElementById('prev-name-kr').innerText || 'character';
+        link.download = `${charName}_외관정리.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+
+        btn.innerText = '🖼️ 이미지로 저장하기';
+        btn.disabled = false;
+      }).catch(err => {
+        alert('이미지 생성에 실패했습니다.');
+        console.error(err);
+        btn.innerText = '🖼️ 이미지로 저장하기';
+        btn.disabled = false;
+      });
+    }
+  </script>
+</body>
+</html>
